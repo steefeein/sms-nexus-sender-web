@@ -69,12 +69,11 @@ export const useSMSAPI = () => {
 
       addLog('info', 'Request data pregătite', requestData);
 
-      // Creează autentificarea Basic Auth EXACT ca în curl (-u username:password)
+      // Folosește autentificarea directă ca în curl -u username:password
       const authString = `${settings.username}:${settings.password}`;
-      const base64Auth = btoa(authString);
       
       addLog('info', 'Autentificare pregătită', {
-        authType: 'Basic Auth',
+        authType: 'Direct Auth (ca în curl -u)',
         username: settings.username,
         hasPassword: !!settings.password
       });
@@ -84,7 +83,7 @@ export const useSMSAPI = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${base64Auth}`
+          'Authorization': `Basic ${btoa(authString)}`
         },
         body: JSON.stringify(requestData),
         // Adaugă configurări pentru cross-origin și timeouts

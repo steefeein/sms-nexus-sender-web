@@ -20,7 +20,6 @@ const SMSSender = () => {
   const [phoneNumbers, setPhoneNumbers] = useState('');
   const [message, setMessage] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-  const [activeTab, setActiveTab] = useState<'sender' | 'dashboard'>('sender');
   const [messageStatuses, setMessageStatuses] = useState<MessageStatusType[]>([]);
   const { sendSMS, isLoading, apiLogs } = useSMSAPI();
 
@@ -129,22 +128,6 @@ const SMSSender = () => {
           </div>
           <div className="flex gap-2">
             <Button
-              variant={activeTab === 'sender' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('sender')}
-              className="flex items-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              SMS Sender
-            </Button>
-            <Button
-              variant={activeTab === 'dashboard' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('dashboard')}
-              className="flex items-center gap-2"
-            >
-              <BarChart className="w-4 h-4" />
-              Dashboard
-            </Button>
-            <Button
               variant="outline"
               onClick={() => setShowSettings(!showSettings)}
               className="flex items-center gap-2"
@@ -160,75 +143,75 @@ const SMSSender = () => {
           <Settings onClose={() => setShowSettings(false)} />
         )}
 
-        {/* Content based on active tab */}
-        {activeTab === 'sender' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* SMS Composer */}
-            <Card className="shadow-lg border-0">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <Send className="w-5 h-5" />
-                  Compune Mesaj
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Numere de telefon (unul per linie)
-                  </label>
-                  <Textarea
-                    placeholder="Ex:&#10;+40712345678&#10;+40723456789&#10;+40734567890"
-                    value={phoneNumbers}
-                    onChange={(e) => setPhoneNumbers(e.target.value)}
-                    className="min-h-[120px] resize-none"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mesaj SMS
-                  </label>
-                  <Textarea
-                    placeholder="Scrie mesajul tau aici..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-[100px] resize-none"
-                    maxLength={160}
-                    disabled={isLoading}
-                  />
-                  <div className="text-right text-sm text-gray-500 mt-1">
-                    {message.length}/160 caractere
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !phoneNumbers.trim() || !message.trim()}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Se trimite...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Send className="w-4 h-4" />
-                      Trimite SMS
-                    </div>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Message Status */}
-            <MessageStatus messages={messageStatuses} />
-          </div>
-        ) : (
-          // Dashboard view
+        {/* Dashboard - deasupra și lat cât ambele casete */}
+        <div className="w-full">
           <Dashboard messageStatuses={messageStatuses} apiLogs={apiLogs} />
-        )}
+        </div>
+
+        {/* SMS Composer și Message Status - dedesubt, una lângă alta */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* SMS Composer */}
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-2">
+                <Send className="w-5 h-5" />
+                Compune Mesaj
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Numere de telefon (unul per linie)
+                </label>
+                <Textarea
+                  placeholder="Ex:&#10;+40712345678&#10;+40723456789&#10;+40734567890"
+                  value={phoneNumbers}
+                  onChange={(e) => setPhoneNumbers(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mesaj SMS
+                </label>
+                <Textarea
+                  placeholder="Scrie mesajul tau aici..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="min-h-[100px] resize-none"
+                  maxLength={160}
+                  disabled={isLoading}
+                />
+                <div className="text-right text-sm text-gray-500 mt-1">
+                  {message.length}/160 caractere
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSendMessage}
+                disabled={isLoading || !phoneNumbers.trim() || !message.trim()}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Se trimite...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4" />
+                    Trimite SMS
+                  </div>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Message Status */}
+          <MessageStatus messages={messageStatuses} />
+        </div>
       </div>
     </div>
   );

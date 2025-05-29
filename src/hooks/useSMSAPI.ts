@@ -48,89 +48,93 @@ export const useSMSAPI = () => {
         throw new Error(errorMsg);
       }
 
-      // Construiește URL-ul API corect
+      // Construiește URL-ul API exact ca în curl
       const apiUrl = `http://${settings.deviceIP}:8080/message`;
       
-      addLog('info', `Încercare conectare la: ${apiUrl}`, { 
+      addLog('info', `Conectare la: ${apiUrl}`, { 
         deviceIP: settings.deviceIP,
         username: settings.username,
         messageLength: message.length,
         phoneCount: phoneNumbers.length
       });
 
-      // Pregătește datele pentru API - exact ca în exemplul curl
+      // Pregătește datele EXACT ca în exemplul curl
       const requestData = {
         message: message,
         phoneNumbers: phoneNumbers
       };
 
-      addLog('info', 'Date pregătite pentru trimitere', requestData);
+      addLog('info', 'Request data pregătite', requestData);
 
-      // Creează header-ul de autentificare Basic Auth
-      const credentials = btoa(`${settings.username}:${settings.password}`);
+      // Creează autentificarea Basic Auth EXACT ca în curl (-u username:password)
+      const authString = `${settings.username}:${settings.password}`;
+      const base64Auth = btoa(authString);
       
-      addLog('info', 'Headers pregătite pentru autentificare', {
+      addLog('info', 'Autentificare pregătită', {
         authType: 'Basic Auth',
-        hasCredentials: !!credentials
+        username: settings.username,
+        hasPassword: !!settings.password
       });
 
-      // Efectuează request-ul cu configurația corectă
+      // Efectuează request-ul EXACT ca în curl
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
-          'Accept': 'application/json'
+          'Authorization': `Basic ${base64Auth}`
         },
         body: JSON.stringify(requestData),
-        // Adaugă timeout pentru debugging
-        signal: AbortSignal.timeout(30000) // 30 secunde timeout
+        // Adaugă configurări pentru cross-origin și timeouts
+        mode: 'cors',
+        credentials: 'omit'
       });
 
-      addLog('info', `Răspuns primit cu status: ${response.status}`, {
+      addLog('info', `Response status: ${response.status}`, {
         status: response.status,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        ok: response.ok
       });
 
+      // Verifică dacă response-ul este OK
       if (!response.ok) {
-        let errorMessage = `HTTP Error: ${response.status} ${response.statusText}`;
-        
+        let errorText = '';
         try {
-          const errorText = await response.text();
-          addLog('error', 'Răspuns eroare de la server', {
+          errorText = await response.text();
+          addLog('error', `HTTP Error ${response.status}`, {
             status: response.status,
             statusText: response.statusText,
             responseBody: errorText
           });
-          errorMessage += ` - ${errorText}`;
         } catch (e) {
           addLog('error', 'Nu s-a putut citi răspunsul de eroare', e);
         }
-
-        throw new Error(errorMessage);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
-      // Încearcă să parseze răspunsul JSON
+      // Parsează răspunsul JSON
+      const responseText = await response.text();
+      addLog('info', 'Response raw text', { responseText });
+      
       let responseData;
-      try {
-        const responseText = await response.text();
-        addLog('info', 'Răspuns text primit', { responseText });
-        
-        if (responseText) {
+      if (responseText.trim()) {
+        try {
           responseData = JSON.parse(responseText);
-        } else {
-          responseData = { success: true, message: 'Răspuns gol - probabil succes' };
+          addLog('success', 'Response JSON parsed successfully', responseData);
+        } catch (parseError) {
+          addLog('info', 'Response nu este JSON valid, dar request a fost de succes', {
+            responseText,
+            parseError: parseError
+          });
+          responseData = { raw: responseText, success: true };
         }
-      } catch (parseError) {
-        addLog('error', 'Eroare la parsarea răspunsului JSON', parseError);
-        // Dacă nu e JSON valid, considerăm succesul pe baza status code-ului
-        responseData = { success: true, message: 'Răspuns non-JSON - considerat succes' };
+      } else {
+        addLog('info', 'Response gol - considerat succes', {});
+        responseData = { success: true, message: 'Empty response - considered success' };
       }
 
-      addLog('success', 'Mesaj trimis cu succes!', {
+      addLog('success', `Mesaj trimis cu succes către ${phoneNumbers.length} numere!`, {
         responseData,
-        sentTo: phoneNumbers.length + ' numere'
+        phoneNumbers
       });
 
       return {
@@ -139,37 +143,30 @@ export const useSMSAPI = () => {
       };
 
     } catch (error) {
-      let errorMessage = 'A apărut o eroare necunoscută';
+      let errorMessage = 'Eroare necunoscută';
       let errorDetails = error;
       
-      if (error instanceof Error) {
-        errorMessage = error.message;
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = `Nu s-a putut conecta la ${settings?.deviceIP || 'dispozitivul Android'}. Verifică:
+- Dacă IP-ul este corect (${settings?.deviceIP || 'nesetat'})
+- Dacă dispozitivul Android este pornit și conectat la rețea
+- Dacă aplicația SMS Gateway rulează pe dispozitiv
+- Dacă firewall-ul permite conexiunea pe portul 8080`;
         
-        // Verifică tipurile specifice de erori
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          errorMessage = 'Nu s-a putut conecta la dispozitivul Android. Verifică adresa IP și conexiunea la rețea.';
-          addLog('error', 'Eroare de conectivitate', {
-            originalError: error.message,
-            suggestion: 'Verifică IP-ul dispozitivului și dacă aplicația SMS Gateway rulează'
-          });
-        } else if (error.name === 'AbortError') {
-          errorMessage = 'Timeout - dispozitivul nu răspunde în timp util.';
-          addLog('error', 'Timeout la request', {
-            timeout: '30 secunde',
-            suggestion: 'Verifică dacă dispozitivul este pornit și conectat la rețea'
-          });
-        } else {
-          addLog('error', 'Eroare generală', {
-            errorName: error.name,
-            errorMessage: error.message,
-            stack: error.stack
-          });
-        }
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-        addLog('error', 'Eroare string', { error });
+        addLog('error', 'Eroare de conectivitate', {
+          originalError: error.message,
+          deviceIP: settings?.deviceIP,
+          suggestion: 'Verifică IP-ul dispozitivului și dacă aplicația SMS Gateway rulează'
+        });
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+        addLog('error', 'Eroare API', {
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack
+        });
       } else {
-        addLog('error', 'Eroare necunoscută', { error, type: typeof error });
+        addLog('error', 'Eroare neprevăzută', { error });
       }
 
       return {

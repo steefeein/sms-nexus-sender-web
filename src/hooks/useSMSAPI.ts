@@ -32,6 +32,9 @@ export const useSMSAPI = () => {
   const sendSMS = async (message: string, phoneNumbers: string[]): Promise<SMSAPIResponse> => {
     setIsLoading(true);
     
+    // Declare settings outside try block so it's accessible in catch block
+    let settings: any = null;
+    
     try {
       // Obține configurările din localStorage
       const settingsStr = localStorage.getItem('smsGatewaySettings');
@@ -41,7 +44,7 @@ export const useSMSAPI = () => {
         throw new Error(errorMsg);
       }
 
-      const settings = JSON.parse(settingsStr);
+      settings = JSON.parse(settingsStr);
       if (!settings.deviceIP || !settings.username || !settings.password) {
         const errorMsg = 'Configurările API sunt incomplete. Te rog verifică setările.';
         addLog('error', errorMsg, settings);
